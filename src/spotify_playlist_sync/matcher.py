@@ -13,6 +13,15 @@ _FEAT_RE = re.compile(
 )
 _JOINER_RE = re.compile(r"\s*[,&x]\s*", re.IGNORECASE)
 
+_VERSION_WORDS = re.compile(
+    r"\b(remix|mix|edit|rework|dub|bootleg|refix|version|re-?edit)\b",
+    re.IGNORECASE,
+)
+_GENERIC_VERSIONS = {
+    "extended", "original", "club", "radio", "vip", "instrumental",
+    "vocal", "stripped", "acoustic", "short", "long", "clean", "dirty",
+}
+
 
 def _normalise(text: str) -> str:
     text = _ADM_RE.sub("", text)
@@ -36,12 +45,14 @@ def search_track(
     track_clean = _ADM_RE.sub("", track).strip()
     candidates: list[dict] = []
 
-    queries = [
-        f'track:"{track_clean}" artist:"{artist}"',
-        f"{artist} {track_clean}",
-    ]
-    if remixer:
-        queries.insert(1, f'track:"{track_clean}" artist:"{remixer}"')
+    remixer_name = _extract_remixer_name(remixer) if remixer else None
+
+    queries = []
+    if remixer_name:
+        queries.append(f"{artist} {track_clean} {remixer_name}")
+        queries.append(f'track:"{track_clean}" artist:"{remixer_name}"')
+    queries.append(f'track:"{track_clean}" artist:"{artist}"')
+    queries.append(f"{artist} {track_clean}")
 
     seen_ids: set[str] = set()
     for q in queries:
@@ -107,6 +118,46 @@ def _release_too_old(sp_item: dict) -> bool:
     return age_days > config.MAX_RELEASE_AGE_DAYS
 
 
+def _extract_remixer_name(remixer: str) -> str | None:
+    """Extract the artist name from a remixer string like 'Butch Remix'.
+
+    Returns None if it's a generic version (Extended Mix, Original, etc.)
+    rather than a named remixer.
+    """
+    name = _VERSION_WORDS.sub("", remixer).strip()
+    name = re.sub(r"\s+", " ", name).strip(" -")
+    if not name or name.lower() in _GENERIC_VERSIONS:
+        return None
+    return name
+
+
+_REMIX_SUFFIX_RE = re.compile(
+    r"\s*[-–—]\s+.*?(remix|mix|edit|rework|dub|bootleg|refix|version|re-?edit)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _remixer_present(remixer_name: str, sp_track: str, sp_item: dict) -> bool:
+    """Check if the remixer name appears in the Spotify track title or artist credits."""
+    target = remixer_name.lower()
+    if target in sp_track.lower():
+        return True
+    for a in sp_item.get("artists", []):
+        if target in a["name"].lower():
+            return True
+    return False
+
+
+def _strip_remix_suffix(sp_track: str) -> str:
+    """Remove '- Remixer Name Remix' suffixes from Spotify track titles."""
+    return _REMIX_SUFFIX_RE.sub("", sp_track).strip()
+
+
+def _artist_contained(folder_artist: str, sp_artists: str) -> bool:
+    """Check if the folder artist name appears within the Spotify artist credits."""
+    return _normalise(folder_artist) in _normalise(sp_artists)
+
+
 def _score_match(
     folder_artist: str,
     folder_track: str,
@@ -119,16 +170,20 @@ def _score_match(
     if _release_too_old(sp_item):
         return 0.0
 
-    artist_sim = _similarity(folder_artist, sp_artists)
-    track_sim = _similarity(folder_track, sp_track)
-    score = (artist_sim * 0.45) + (track_sim * 0.45)
+    remixer_name = _extract_remixer_name(folder_remixer) if folder_remixer else None
+    if remixer_name and not _remixer_present(remixer_name, sp_track, sp_item):
+        return 0.0
 
-    if folder_remixer and sp_track:
-        if folder_remixer.lower() in sp_track.lower():
-            score += 0.05
-        remix_artists = " ".join(a["name"] for a in sp_item["artists"])
-        if folder_remixer.lower() in remix_artists.lower():
-            score += 0.05
+    if remixer_name:
+        sp_track_clean = _strip_remix_suffix(sp_track)
+        track_sim = _similarity(folder_track, sp_track_clean)
+        artist_ok = _artist_contained(folder_artist, sp_artists)
+        artist_sim = 1.0 if artist_ok else _similarity(folder_artist, sp_artists)
+        score = (artist_sim * 0.40) + (track_sim * 0.40) + 0.20
+    else:
+        artist_sim = _similarity(folder_artist, sp_artists)
+        track_sim = _similarity(folder_track, sp_track)
+        score = (artist_sim * 0.45) + (track_sim * 0.45)
 
     return min(score, 1.0)
 
