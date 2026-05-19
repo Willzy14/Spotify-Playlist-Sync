@@ -199,9 +199,19 @@ def _detect_version(sp_track: str) -> tuple[str | None, int]:
     return None, 30
 
 
-def _artist_contained(folder_artist: str, sp_artists: str) -> bool:
-    """Check if the folder artist name appears within the Spotify artist credits."""
-    return _normalise(folder_artist) in _normalise(sp_artists)
+def _artist_similarity(folder_artist: str, sp_item: dict) -> float:
+    """Score artist match using primary Spotify artist, not the full credit string."""
+    sp_artists_list = sp_item.get("artists", [])
+    if not sp_artists_list:
+        return 0.0
+
+    primary = sp_artists_list[0]["name"]
+    primary_sim = _similarity(folder_artist, primary)
+
+    full_credits = ", ".join(a["name"] for a in sp_artists_list)
+    full_sim = _similarity(folder_artist, full_credits)
+
+    return max(primary_sim, full_sim * 0.7)
 
 
 def _score_match(
@@ -221,14 +231,12 @@ def _score_match(
         return 0.0
 
     sp_track_clean = _strip_version_suffix(sp_track)
+    artist_sim = _artist_similarity(folder_artist, sp_item)
 
     if remixer_name:
         track_sim = _similarity(folder_track, sp_track_clean)
-        artist_ok = _artist_contained(folder_artist, sp_artists)
-        artist_sim = 1.0 if artist_ok else _similarity(folder_artist, sp_artists)
         score = (artist_sim * 0.40) + (track_sim * 0.40) + 0.20
     else:
-        artist_sim = _similarity(folder_artist, sp_artists)
         track_sim = _similarity(folder_track, sp_track_clean)
         score = (artist_sim * 0.45) + (track_sim * 0.45)
 
