@@ -1,0 +1,7 @@
+__pycache__/
+*.egg-info/
+.env
+*.pyc
+exchange_token.py
+auth_manual.py
+test_scan.py

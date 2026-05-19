@@ -1,0 +1,89 @@
+{
+  "project": {
+    "name": "Spotify Playlist Sync",
+    "stack": ["python", "spotipy", "sqlite", "python-dotenv"],
+    "repo_url": "https://github.com/Willzy14/Spotify-Playlist-Sync.git"
+  },
+  "modules": {
+    "src/spotify_playlist_sync/config.py": {
+      "purpose": "Central configuration — env loading, source paths, playlist names",
+      "exports": ["SPOTIFY_CLIENT_ID", "SPOTIFY_CLIENT_SECRET", "SOURCE_DIRS", "PLAYLIST_NAMES", "PLAYLIST_SOURCES"],
+      "depends_on": ["python-dotenv"],
+      "last_modified": "2026-05-18",
+      "status": "active"
+    },
+    "src/spotify_playlist_sync/spotify_client.py": {
+      "purpose": "Spotipy OAuth wrapper and playlist utility functions",
+      "exports": ["get_client", "find_playlist_id", "get_playlist_track_ids"],
+      "depends_on": ["spotipy", "config"],
+      "last_modified": "2026-05-18",
+      "status": "active"
+    },
+    "src/spotify_playlist_sync/state.py": {
+      "purpose": "SQLite state management for processed folders and added tracks",
+      "exports": ["is_folder_processed", "save_folder", "record_track_added", "get_added_tracks", "log_run", "get_stats", "clear_all"],
+      "depends_on": ["config"],
+      "last_modified": "2026-05-18",
+      "status": "active"
+    },
+    "src/spotify_playlist_sync/folder_scanner.py": {
+      "purpose": "Walks source directories and parses folder names into track metadata",
+      "exports": ["scan_all"],
+      "depends_on": ["track_release_pipeline.file_parser", "config", "state"],
+      "last_modified": "2026-05-18",
+      "status": "active"
+    },
+    "src/spotify_playlist_sync/matcher.py": {
+      "purpose": "Spotify search with fuzzy matching and confidence scoring",
+      "exports": ["search_track", "classify_match"],
+      "depends_on": ["spotipy", "config"],
+      "last_modified": "2026-05-18",
+      "status": "active"
+    },
+    "src/spotify_playlist_sync/playlist_manager.py": {
+      "purpose": "Playlist CRUD — find by name, read tracks, add at top, replace",
+      "exports": ["resolve_playlists", "sync_main_playlist", "sync_top10_playlist", "replace_playlist", "get_popularity"],
+      "depends_on": ["spotipy", "config", "state", "spotify_client"],
+      "last_modified": "2026-05-18",
+      "status": "active"
+    },
+    "src/spotify_playlist_sync/cli.py": {
+      "purpose": "CLI entry point — scan, review, add, status, rescan, auth commands",
+      "exports": ["main"],
+      "depends_on": ["all modules"],
+      "last_modified": "2026-05-18",
+      "status": "active"
+    }
+  },
+  "sessions": [
+    {
+      "date": "2026-05-18",
+      "summary": "Initial build — all core modules, folder scanner tested (231/234 folders parsed)",
+      "files_changed": ["pyproject.toml", "src/spotify_playlist_sync/*.py"],
+      "pending": ["OAuth first-run", "end-to-end test", "bootstrap context files"]
+    },
+    {
+      "date": "2026-05-19",
+      "summary": "Bootstrap + OAuth — context files created, git repo initialized, fixed Spotify credentials, completed OAuth auth",
+      "files_changed": ["Documentation/AI_CONTEXT.md", "Documentation/TOOLBOX.md", ".github/*", "!SKILLS.md"],
+      "pending": ["full scan test", "review + add flow", "Top 10 playlist test", "add to Project Registry"]
+    }
+  ],
+  "decisions": [
+    {
+      "date": "2026-05-18",
+      "decision": "Reuse track-release-pipeline's file_parser instead of duplicating parsing logic",
+      "reason": "Already handles all folder naming patterns correctly"
+    },
+    {
+      "date": "2026-05-18",
+      "decision": "Use Spotify popularity score (0-100) instead of exact stream counts for Top 10 ranking",
+      "reason": "Stream counts require Spotify for Artists access; popularity score is available via standard API"
+    },
+    {
+      "date": "2026-05-18",
+      "decision": "Load Spotify credentials from MCP server .env as single source of truth",
+      "reason": "Avoid duplicating credentials across projects"
+    }
+  ]
+}

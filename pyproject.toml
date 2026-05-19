@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spotify-playlist-sync"
+version = "0.1.0"
+description = "Sync Sam's mixing/mastering project folders to Spotify playlists"
+requires-python = ">=3.11"
+authors = [{ name = "Sam Wills", email = "samwills19@googlemail.com" }]
+license = { text = "MIT" }
+
+dependencies = [
+    "spotipy>=2.24.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+spotify-playlist-sync = "spotify_playlist_sync.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
