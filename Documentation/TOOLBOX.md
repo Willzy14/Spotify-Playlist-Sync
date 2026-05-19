@@ -36,16 +36,24 @@
 
 ### playlist_manager.py
 - **Path**: `src/spotify_playlist_sync/playlist_manager.py`
-- **Purpose**: Playlist CRUD — find by name, read tracks, add at top, replace, popularity sorting
-- **Key Exports**: `resolve_playlists()`, `add_tracks_to_top()`, `replace_playlist()`, `get_popularity()`, `sync_main_playlist()`, `sync_top10_playlist()`
+- **Purpose**: Playlist CRUD — find by name, read tracks, add at top, replace, two-tier popularity sorting, re-linked track resolution
+- **Key Exports**: `resolve_playlists()`, `add_tracks_to_top()`, `replace_playlist()`, `get_popularity()`, `sync_main_playlist()`, `resort_playlist()`, `sync_top10_playlist()`
 - **Dependencies**: `spotipy`, `config`, `state`, `spotify_client`
+
+### top10_suggestions.py
+- **Path**: `src/spotify_playlist_sync/top10_suggestions.py`
+- **Purpose**: Weekly Top 10 swap suggestion engine — compares curated Top 10s against algorithmic ranking
+- **Key Exports**: `generate_suggestions()`
+- **Dependencies**: `spotipy`, `config`, `state`, `playlist_manager`
+- **Scoring**: `track_pop * (1 + artist_pop/200) * (1 + sqrt(age_years))` with dedup and blocklist
+- **Output**: `~/.spotify-playlist-sync/suggestions/latest_suggestions.md`
 
 ### cli.py
 - **Path**: `src/spotify_playlist_sync/cli.py`
 - **Purpose**: CLI entry point with argparse — all user-facing commands
-- **Key Exports**: `main()`, `cmd_auth()`, `cmd_scan()`, `cmd_review()`, `cmd_add()`, `cmd_status()`, `cmd_rescan()`
+- **Key Exports**: `main()`, `cmd_auth()`, `cmd_scan()`, `cmd_review()`, `cmd_add()`, `cmd_sync()`, `cmd_status()`, `cmd_rescan()`
 - **Dependencies**: All other modules
-- **Commands**: `auth`, `scan`, `review`, `add`, `status`, `rescan`
+- **Commands**: `auth`, `scan`, `review`, `add`, `sync`, `status`, `rescan`
 
 ## External Dependencies
 

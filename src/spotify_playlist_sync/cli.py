@@ -13,6 +13,7 @@ from .playlist_manager import (
     sync_top10_playlist,
 )
 from .spotify_client import get_client
+from .top10_suggestions import generate_suggestions
 
 
 def cmd_auth(_args: argparse.Namespace) -> None:
@@ -304,8 +305,6 @@ def cmd_sync(_args: argparse.Namespace) -> None:
             print(f"  {config.PLAYLIST_NAMES[key]}: {count} new tracks added")
         total_added += count
 
-    # Top 10 playlists skipped until full catalog is in the database
-
     print("\n[5/5] Re-sorting playlists by current popularity...")
     for key in ["mastered", "mixed_mastered"]:
         if key not in playlists:
@@ -314,6 +313,15 @@ def cmd_sync(_args: argparse.Namespace) -> None:
         print(f"  {config.PLAYLIST_NAMES[key]}: {count} tracks sorted")
 
     state.log_run(len(folders), len(approved), total_added, no_match_count)
+
+    from datetime import datetime
+    if datetime.now().weekday() == 0:  # Monday
+        print("\n[WEEKLY] Generating Top 10 suggestions...")
+        report = generate_suggestions(sp)
+        if report:
+            print("  Suggestions written to state dir")
+        else:
+            print("  No suggestions — curated lists match rankings")
 
     print("\n" + "=" * 60)
     print("SYNC COMPLETE")
