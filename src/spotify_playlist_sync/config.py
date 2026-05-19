@@ -1,13 +1,33 @@
 import os
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-_MCP_ENV = Path(
-    r"F:\Wired Masters Dropbox\Sam Wills"
-    r"\Claude Code Brain\mcp-servers\mcp-claude-spotify\.env"
-)
 
+def _find_dropbox_root() -> Path:
+    candidates = [
+        Path(r"C:\Users\Carillon\Wired Masters Dropbox\Sam Wills"),
+        Path(r"F:\Wired Masters Dropbox\Sam Wills"),
+        Path("/Users/samuelwills/Wired Masters Dropbox/Sam Wills"),
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if parent.name == "Sam Wills" and "Wired Masters Dropbox" in str(parent):
+            return parent
+    print("ERROR: Could not find Wired Masters Dropbox root", file=sys.stderr)
+    sys.exit(1)
+
+
+DROPBOX_ROOT = _find_dropbox_root()
+
+_MCP_ENV = (
+    DROPBOX_ROOT / "Claude Code Brain" / "mcp-servers"
+    / "mcp-claude-spotify" / ".env"
+)
 _LOCAL_ENV = Path(__file__).resolve().parents[2] / ".env"
 
 if _LOCAL_ENV.exists():
@@ -23,8 +43,6 @@ SPOTIFY_SCOPES = (
     "playlist-modify-private "
     "playlist-read-private"
 )
-
-DROPBOX_ROOT = Path(r"F:\Wired Masters Dropbox\Sam Wills")
 
 SOURCE_DIRS = {
     "mastered": DROPBOX_ROOT / "1. Stereo Masters",
@@ -53,3 +71,6 @@ PENDING_REVIEW = STATE_DIR / "pending_review.json"
 TOP_10_WINDOW_DAYS = 365
 NEW_TRACK_WINDOW_DAYS = 60
 SEARCH_DELAY = 0.2
+
+MAX_RELEASE_AGE_DAYS = 365
+MIN_FOLDER_AGE_DAYS = 30

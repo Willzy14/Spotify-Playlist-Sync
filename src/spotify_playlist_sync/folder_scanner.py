@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from pathlib import Path
 
 from track_release_pipeline.file_parser import parse_folder_name
@@ -6,11 +7,19 @@ from . import config
 from . import state
 
 
+def _folder_created_at(path: Path) -> datetime:
+    return datetime.fromtimestamp(path.stat().st_ctime, tz=timezone.utc)
+
+
+def _folder_age_days(path: Path) -> int:
+    return (datetime.now(timezone.utc) - _folder_created_at(path)).days
+
+
 def scan_all(skip_processed: bool = True) -> list[dict]:
     """Scan all source directories and return parsed folder metadata.
 
     Each result dict has: folder_path, folder_name, source_type,
-    artist, track, remixer, label.
+    artist, track, remixer, label, folder_age_days.
     """
     results = []
     for source_type, source_dir in config.SOURCE_DIRS.items():
@@ -41,5 +50,6 @@ def scan_all(skip_processed: bool = True) -> list[dict]:
                 "track": parsed["track"],
                 "remixer": parsed.get("remixer"),
                 "label": parsed.get("label"),
+                "folder_age_days": _folder_age_days(folder),
             })
     return results

@@ -1,5 +1,6 @@
 import re
 import time
+from datetime import datetime, timezone
 from difflib import SequenceMatcher
 
 import spotipy
@@ -83,6 +84,29 @@ def search_track(
     return candidates[:5]
 
 
+def _parse_release_date(album: dict) -> datetime | None:
+    raw = album.get("release_date", "")
+    precision = album.get("release_date_precision", "day")
+    try:
+        if precision == "day":
+            return datetime.strptime(raw, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        elif precision == "month":
+            return datetime.strptime(raw, "%Y-%m").replace(tzinfo=timezone.utc)
+        elif precision == "year":
+            return datetime.strptime(raw, "%Y").replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        pass
+    return None
+
+
+def _release_too_old(sp_item: dict) -> bool:
+    released = _parse_release_date(sp_item.get("album", {}))
+    if released is None:
+        return False
+    age_days = (datetime.now(timezone.utc) - released).days
+    return age_days > config.MAX_RELEASE_AGE_DAYS
+
+
 def _score_match(
     folder_artist: str,
     folder_track: str,
@@ -92,6 +116,9 @@ def _score_match(
     sp_track: str,
     sp_item: dict,
 ) -> float:
+    if _release_too_old(sp_item):
+        return 0.0
+
     artist_sim = _similarity(folder_artist, sp_artists)
     track_sim = _similarity(folder_track, sp_track)
     score = (artist_sim * 0.45) + (track_sim * 0.45)
