@@ -96,11 +96,26 @@ def sync_main_playlist(
     return len(new_ids)
 
 
+def _resolve_playlist_tracks(sp: spotipy.Spotify, playlist_id: str) -> list[str]:
+    """Get all track IDs from a playlist, resolving re-linked tracks to current IDs."""
+    ids: list[str] = []
+    offset = 0
+    while True:
+        batch = sp.playlist_tracks(playlist_id, limit=100, offset=offset, market="GB")
+        for item in batch["items"]:
+            track = item.get("track")
+            if track and track.get("id"):
+                ids.append(track["id"])
+        if batch["next"] is None:
+            return ids
+        offset += 100
+
+
 def resort_playlist(
     sp: spotipy.Spotify, playlist_id: str, playlist_key: str,
 ) -> int:
     """Re-sort playlist in two tiers: recent (60 days) then older, both by popularity."""
-    track_ids = list(get_playlist_track_ids(sp, playlist_id))
+    track_ids = _resolve_playlist_tracks(sp, playlist_id)
     if not track_ids:
         return 0
 
