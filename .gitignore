@@ -5,3 +5,9 @@ __pycache__/
 exchange_token.py
 auth_manual.py
 test_scan.py
+test_dates.py
+test_remixer.py
+test_dames.py
+test_yael.py
+clear_test.py
+*.tmp.*
