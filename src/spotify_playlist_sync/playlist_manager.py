@@ -94,6 +94,17 @@ def sync_main_playlist(
     return len(new_ids)
 
 
+def resort_playlist(sp: spotipy.Spotify, playlist_id: str) -> int:
+    """Re-sort an entire playlist by current Spotify popularity."""
+    track_ids = list(get_playlist_track_ids(sp, playlist_id))
+    if not track_ids:
+        return 0
+    pop = get_popularity(sp, track_ids)
+    sorted_ids = sorted(track_ids, key=lambda tid: pop.get(tid, 0), reverse=True)
+    replace_playlist(sp, playlist_id, sorted_ids)
+    return len(sorted_ids)
+
+
 def sync_top10_playlist(
     sp: spotipy.Spotify,
     playlist_key: str,

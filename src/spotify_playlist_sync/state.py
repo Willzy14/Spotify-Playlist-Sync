@@ -47,10 +47,12 @@ def _init_tables(conn: sqlite3.Connection) -> None:
 def is_folder_processed(folder_path: str) -> bool:
     with _connect() as conn:
         row = conn.execute(
-            "SELECT 1 FROM processed_folders WHERE folder_path = ?",
+            "SELECT status FROM processed_folders WHERE folder_path = ?",
             (folder_path,),
         ).fetchone()
-        return row is not None
+        if row is None:
+            return False
+        return row["status"] in ("added", "parse_failed")
 
 
 def save_folder(
