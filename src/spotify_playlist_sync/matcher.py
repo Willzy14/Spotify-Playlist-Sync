@@ -73,6 +73,7 @@ def search_track(
                 artist, track_clean, remixer, label,
                 sp_artists, sp_track, item,
             )
+            version_label, version_pref = _detect_version(sp_track)
             candidates.append({
                 "spotify_id": tid,
                 "spotify_name": sp_track,
@@ -80,6 +81,8 @@ def search_track(
                 "spotify_album": item["album"]["name"],
                 "popularity": item.get("popularity", 0),
                 "confidence": round(score, 3),
+                "version": version_label,
+                "version_pref": version_pref,
             })
         if candidates:
             break
@@ -91,7 +94,7 @@ def search_track(
             sub_results = search_track(sp, artist, sub_track, remixer, label)
             candidates.extend(sub_results)
 
-    candidates.sort(key=lambda c: c["confidence"], reverse=True)
+    candidates.sort(key=lambda c: (c["confidence"], c["version_pref"]), reverse=True)
     return candidates[:5]
 
 
@@ -131,10 +134,40 @@ def _extract_remixer_name(remixer: str) -> str | None:
     return name
 
 
-_REMIX_SUFFIX_RE = re.compile(
-    r"\s*[-–—]\s+.*?(remix|mix|edit|rework|dub|bootleg|refix|version|re-?edit)\s*$",
+_ARRANGEMENT_SUFFIX_RE = re.compile(
+    r"\s*[-–—]\s+("
+    r"extended\s*mix|radio\s*edit|original\s*mix|club\s*mix|"
+    r"dub\s*mix|instrumental|vocal\s*mix|vip\s*mix|"
+    r"stripped|acoustic|short\s*edit|clean|dirty|"
+    r"edit|dub"
+    r")\s*$",
     re.IGNORECASE,
 )
+
+_REMIX_SUFFIX_RE = re.compile(
+    r"\s*[-–—]\s+.*?(remix|rework|bootleg|refix|re-?edit)\s*$",
+    re.IGNORECASE,
+)
+
+_VERSION_PREFERENCE = {
+    "radio edit": 100,
+    "radio mix": 100,
+    "edit": 80,
+    "short edit": 80,
+    "clean": 70,
+    "original mix": 50,
+    "original": 50,
+    "club mix": 40,
+    "vocal mix": 40,
+    "dub mix": 20,
+    "dub": 20,
+    "instrumental": 20,
+    "stripped": 20,
+    "acoustic": 20,
+    "extended mix": 10,
+    "extended": 10,
+    "vip mix": 10,
+}
 
 
 def _remixer_present(remixer_name: str, sp_track: str, sp_item: dict) -> bool:
@@ -148,9 +181,22 @@ def _remixer_present(remixer_name: str, sp_track: str, sp_item: dict) -> bool:
     return False
 
 
-def _strip_remix_suffix(sp_track: str) -> str:
-    """Remove '- Remixer Name Remix' suffixes from Spotify track titles."""
-    return _REMIX_SUFFIX_RE.sub("", sp_track).strip()
+def _strip_version_suffix(sp_track: str) -> str:
+    """Remove arrangement suffixes (Extended Mix, Radio Edit, etc.) and remix suffixes."""
+    cleaned = _ARRANGEMENT_SUFFIX_RE.sub("", sp_track)
+    cleaned = _REMIX_SUFFIX_RE.sub("", cleaned)
+    return cleaned.strip()
+
+
+def _detect_version(sp_track: str) -> tuple[str | None, int]:
+    """Detect the arrangement version and return (version_label, preference_score)."""
+    m = _ARRANGEMENT_SUFFIX_RE.search(sp_track)
+    if m:
+        version = m.group(1).strip().lower()
+        return version, _VERSION_PREFERENCE.get(version, 30)
+    if not _REMIX_SUFFIX_RE.search(sp_track):
+        return None, 50
+    return None, 30
 
 
 def _artist_contained(folder_artist: str, sp_artists: str) -> bool:
@@ -174,15 +220,16 @@ def _score_match(
     if remixer_name and not _remixer_present(remixer_name, sp_track, sp_item):
         return 0.0
 
+    sp_track_clean = _strip_version_suffix(sp_track)
+
     if remixer_name:
-        sp_track_clean = _strip_remix_suffix(sp_track)
         track_sim = _similarity(folder_track, sp_track_clean)
         artist_ok = _artist_contained(folder_artist, sp_artists)
         artist_sim = 1.0 if artist_ok else _similarity(folder_artist, sp_artists)
         score = (artist_sim * 0.40) + (track_sim * 0.40) + 0.20
     else:
         artist_sim = _similarity(folder_artist, sp_artists)
-        track_sim = _similarity(folder_track, sp_track)
+        track_sim = _similarity(folder_track, sp_track_clean)
         score = (artist_sim * 0.45) + (track_sim * 0.45)
 
     return min(score, 1.0)
