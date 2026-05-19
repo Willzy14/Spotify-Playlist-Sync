@@ -225,6 +225,8 @@ def _score_match(
 ) -> float:
     if _release_too_old(sp_item):
         return 0.0
+    if sp_item.get("popularity", 0) < config.MIN_POPULARITY:
+        return 0.0
 
     remixer_name = _extract_remixer_name(folder_remixer) if folder_remixer else None
     if remixer_name and not _remixer_present(remixer_name, sp_track, sp_item):
