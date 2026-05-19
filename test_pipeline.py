@@ -4,6 +4,9 @@ import json
 import sys
 import time
 
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from spotify_playlist_sync import config
 from spotify_playlist_sync.folder_scanner import scan_all
 from spotify_playlist_sync.matcher import classify_match, search_track
@@ -11,7 +14,7 @@ from spotify_playlist_sync.spotify_client import get_client, get_playlist_track_
 from spotify_playlist_sync.state import clear_all as clear_state
 
 TEST_PLAYLIST_NAME = "Claude Testing"
-MAX_FOLDERS = 30
+MAX_FOLDERS = 0  # 0 = no limit
 
 
 def find_or_create_playlist(sp, name):
@@ -53,8 +56,8 @@ def main():
     print(f"\n[3/5] Scanning folders (max {MAX_FOLDERS})...")
     clear_state()
     all_folders = scan_all(skip_processed=False)
-    folders = all_folders[:MAX_FOLDERS]
-    print(f"  {len(all_folders)} total folders found, testing with {len(folders)}")
+    folders = all_folders[:MAX_FOLDERS] if MAX_FOLDERS else all_folders
+    print(f"  {len(all_folders)} total folders found, processing {'all' if not MAX_FOLDERS else len(folders)}")
 
     # Step 4: Match against Spotify
     print(f"\n[4/5] Searching Spotify for {len(folders)} tracks...")

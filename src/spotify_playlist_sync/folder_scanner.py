@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -5,6 +6,8 @@ from track_release_pipeline.file_parser import parse_folder_name
 
 from . import config
 from . import state
+
+_ADM_FOLDER_RE = re.compile(r"\bADM'?S?\b", re.IGNORECASE)
 
 
 def _folder_created_at(path: Path) -> datetime:
@@ -32,6 +35,8 @@ def scan_all(skip_processed: bool = True) -> list[dict]:
         print(f"  Scanning {source_dir.name}... {len(folders)} folders")
         for folder in folders:
             folder_path = str(folder)
+            if _ADM_FOLDER_RE.search(folder.name):
+                continue
             if skip_processed and state.is_folder_processed(folder_path):
                 continue
             parsed = parse_folder_name(folder_path)
