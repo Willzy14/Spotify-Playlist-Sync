@@ -103,6 +103,15 @@ def get_added_tracks(playlist_key: str, since_days: int | None = None) -> list[d
         return [dict(r) for r in rows]
 
 
+def get_track_added_dates(playlist_key: str) -> dict[str, str]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT spotify_id, added_at FROM added_tracks WHERE playlist_key = ?",
+            (playlist_key,),
+        ).fetchall()
+        return {r["spotify_id"]: r["added_at"] for r in rows}
+
+
 def log_run(folders_scanned: int, matched: int, added: int, skipped: int) -> None:
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:

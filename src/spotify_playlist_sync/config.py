@@ -51,8 +51,8 @@ SOURCE_DIRS = {
 
 PLAYLIST_NAMES = {
     "mastered": "Mastered By Sam Wills",
-    "mixed_mastered": "Mixed and Mastered by Sam Wills",
-    "mastered_top10": "Mastered by Sam Wills Top 10",
+    "mixed_mastered": "Mixed & Mastered By Sam Wills",
+    "mastered_top10": "Mastered By Sam Wills Top 10",
     "mixed_mastered_top10": "Mixed and Mastered by Sam Wills Top 10",
 }
 
@@ -75,3 +75,4 @@ SEARCH_DELAY = 0.2
 MAX_RELEASE_AGE_DAYS = 365
 MIN_FOLDER_AGE_DAYS = 30
 MIN_POPULARITY = 5
+RECENT_TIER_DAYS = 60

@@ -304,17 +304,13 @@ def cmd_sync(_args: argparse.Namespace) -> None:
             print(f"  {config.PLAYLIST_NAMES[key]}: {count} new tracks added")
         total_added += count
 
-    for key in ["mastered_top10", "mixed_mastered_top10"]:
-        if key not in playlists:
-            continue
-        count = sync_top10_playlist(sp, key, playlists[key])
-        print(f"  {config.PLAYLIST_NAMES[key]}: rebuilt with {count} tracks")
+    # Top 10 playlists skipped until full catalog is in the database
 
     print("\n[5/5] Re-sorting playlists by current popularity...")
     for key in ["mastered", "mixed_mastered"]:
         if key not in playlists:
             continue
-        count = resort_playlist(sp, playlists[key])
+        count = resort_playlist(sp, playlists[key], key)
         print(f"  {config.PLAYLIST_NAMES[key]}: {count} tracks sorted")
 
     state.log_run(len(folders), len(approved), total_added, no_match_count)

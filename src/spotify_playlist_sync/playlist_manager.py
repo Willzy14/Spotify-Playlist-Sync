@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 import spotipy
 
 from . import config
@@ -94,15 +96,38 @@ def sync_main_playlist(
     return len(new_ids)
 
 
-def resort_playlist(sp: spotipy.Spotify, playlist_id: str) -> int:
-    """Re-sort an entire playlist by current Spotify popularity."""
+def resort_playlist(
+    sp: spotipy.Spotify, playlist_id: str, playlist_key: str,
+) -> int:
+    """Re-sort playlist in two tiers: recent (60 days) then older, both by popularity."""
     track_ids = list(get_playlist_track_ids(sp, playlist_id))
     if not track_ids:
         return 0
+
     pop = get_popularity(sp, track_ids)
-    sorted_ids = sorted(track_ids, key=lambda tid: pop.get(tid, 0), reverse=True)
-    replace_playlist(sp, playlist_id, sorted_ids)
-    return len(sorted_ids)
+    added_dates = state.get_track_added_dates(playlist_key)
+    now = datetime.now(timezone.utc)
+    cutoff_days = config.RECENT_TIER_DAYS
+
+    recent = []
+    older = []
+    for tid in track_ids:
+        added_str = added_dates.get(tid)
+        if added_str:
+            added_dt = datetime.fromisoformat(added_str)
+            age_days = (now - added_dt).days
+            if age_days <= cutoff_days:
+                recent.append(tid)
+            else:
+                older.append(tid)
+        else:
+            older.append(tid)
+
+    recent.sort(key=lambda tid: pop.get(tid, 0), reverse=True)
+    older.sort(key=lambda tid: pop.get(tid, 0), reverse=True)
+
+    replace_playlist(sp, playlist_id, recent + older)
+    return len(track_ids)
 
 
 def sync_top10_playlist(
